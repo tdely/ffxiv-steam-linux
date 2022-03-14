@@ -51,8 +51,6 @@ info(){
         [ -f "$WINEPREFIX/system.reg" ] && wps="present" || wps="invalid"
     else wps="missing"; fi
     [ -L "$steam_link" ] && sls="present" || sls="missing"
-    dxvk_cfg=${DXVK_CONFIG_FILE:-$curdir/game/dxvk.conf}
-    [ -f "$dxvk_cfg" ] && dcs="present" || dcs="missing"
     cat <<EOF
 --- Environment Variables
 DXVK_FRAME_RATE:  ${DXVK_FRAME_RATE:-[not set]}
@@ -64,9 +62,10 @@ Wine executable:  [$ws] $WINE
 Wine prefix:      [$wps] $WINEPREFIX
 Steam symlink:    [$sls] $steam_link
 EOF
-# DXVK config: [missing] may be inferred as an issue requiring fixing, hide
-# unless there's a reasonable cause to show.
-([ -n "${DXVK_CONFIG_FILE+x}" ] || [ -f "$dxvk_cfg" ]) && echo "DXVK config:      [$dcs] $dxvk_cfg"
+    # DXVK config: [missing] may be inferred as an issue requiring fixing, hide
+    # unless there's a reasonable cause to show.
+    [ -f "${DXVK_CONFIG_FILE+x}" ] && dcs="present" || dcs="missing"
+    [ -n "${DXVK_CONFIG_FILE+x}" ] && echo "DXVK config:      [$dcs] $DXVK_CONFIG_FILE"
 }
 
 setup_dxvk(){
