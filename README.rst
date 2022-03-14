@@ -20,6 +20,19 @@ GloriousEggroll's proton-ge-custom build, into which it:
 The script will not install while the prefix destination exists, and will abort
 on any error encountered.
 
+**reinstall** automates the following actions:
+
+* *backup*
+* rename current prefix
+* *install*
+* *restore*
+
+The old prefix will not be removed and can be found as `prefix-old`.
+
+**backup** configuration/user data in the prefix as `settings.tar.gz`.
+
+**restore** configuration/user data from `settings.tar.gz` into the prefix.
+
 **run** launches XIVLauncher in the prefix.
 
 **info** prints out some DXVK environment variables relevant to *run* and status

@@ -11,6 +11,9 @@ dxvk_name="dxvk-$dxvk_ver"
 dir=$(dirname "$0")
 curdir="$(cd "$dir" && pwd -P)"
 steam_path="$HOME/.local/share/Steam/steamapps/compatdata/0/pfx/drive_c/Program Files (x86)/Steam"
+ffxiv_settings="drive_c/users/steamuser/Documents/My Games/FINAL FANTASY XIV - A Realm Reborn/"
+xivlauncher_settings="drive_c/users/steamuser/AppData/Roaming/XIVLauncher/"
+backup_tar="settings.tar.gz"
 
 export WINE="$curdir/$proton_name/files/bin/wine"
 export WINEPREFIX="$curdir/prefix"
@@ -29,6 +32,9 @@ Run FFXIV for Steam on Linux.
 Commands:
   info         Show
   install      Install XIVLauncher and required software into Wine
+  reinstall    Reinstall while keeping configuration/user data
+  backup       Backup configuration/user data
+  restore      Restore configuration/user data from backup
   run          Run XIVLauncher from Wine
 
 Options:
@@ -89,13 +95,12 @@ setup_dxvk(){
 EOF
     cd $dxvk_name
     ./setup_dxvk.sh install
-    cd $curdir
+    cd "$curdir"
     ${keep_files:-false} || rm -r $dxvk_name
 }
 
 check_prereqs(){
-    if [ -d "$WINEPREFIX" ]; then echo "Wine prefix already exists"
-    elif ! [ -d "$steam_path" ]; then echo "Failed to locate Proton Steam"
+    if ! [ -d "$steam_path" ]; then echo "Failed to locate Proton Steam"
     elif ! which winetricks; then :
     elif ! which curl; then :
     else return 0; fi
@@ -104,7 +109,7 @@ check_prereqs(){
 }
 
 install(){
-    check_prereqs || exit 1
+    [ -d "$WINEPREFIX" ] && echo "Wine prefix already exists" && exit 1
     cd "$curdir"
     curl -L "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/$proton_ver/$proton_name.tar.gz" | tar xz
     for pkg in ${wine_pkgs[*]}; do
@@ -115,15 +120,31 @@ install(){
     echo "Creating Steam symlink in Wine prefix.."
     ln -s "$steam_path" "$steam_link"
     echo "Disabling startup cutscenes.."
-    mygames_ffxiv="drive_c/users/steamuser/Documents/My Games/FINAL FANTASY XIV - A Realm Reborn/"
-    mkdir -p "$WINEPREFIX/$mygames_ffxiv"
-    echo -e "<FINAL FANTASY XIV Config File>\n\n<Cutscene Settings>\nCutsceneMovieOpening 1" > "$WINEPREFIX/$mygames_ffxiv/FFXIV.cfg"
-    echo -e "<FINAL FANTASY XIV Boot Config File>\n\n<Version>\nBrowser 1\nStartupCompleted    1" > "$WINEPREFIX/$mygames_ffxiv/FFXIV_BOOT.cfg"
+    mkdir -p "$WINEPREFIX/$ffxiv_settings"
+    echo -e "<FINAL FANTASY XIV Config File>\n\n<Cutscene Settings>\nCutsceneMovieOpening 1" > "$WINEPREFIX/$ffxiv_settings/FFXIV.cfg"
+    echo -e "<FINAL FANTASY XIV Boot Config File>\n\n<Version>\nBrowser 1\nStartupCompleted    1" > "$WINEPREFIX/$ffxiv_settings/FFXIV_BOOT.cfg"
     # XIVLauncher
     echo "Installing XIVLauncher into Wine prefix.."
     [ -f Setup.exe ] || curl -LO https://kamori.goats.dev/Proxy/Update/Release/Setup.exe
     "$WINE" Setup.exe
     ${keep_files:-false} || rm Setup.exe
+}
+
+backup(){
+    [ -d "$WINEPREFIX" ] || (echo "No prefix to backup" ; exit 1)
+    echo "Backing up FFXIV and XIVLauncher settings.."
+    cd "$curdir"
+    tar czf settings.tar.gz \
+        "prefix/$ffxiv_settings" \
+        "prefix/$xivlauncher_settings"
+}
+
+restore(){
+    [ -f "$backup_tar" ] || (echo "No backup to restore" ; exit 1)
+    [ -d "$WINEPREFIX" ] || (echo "Missing Wine prefix" ; exit 1)
+    cd "$curdir"
+    echo "Restoring FFXIV and XIVLauncher settings.."
+    tar xzpf settings.tar.gz
 }
 
 run(){
@@ -144,7 +165,10 @@ shift "$(( OPTIND - 1 ))"
 cmd="${1:-x}"
 case "${cmd:-x}" in
     info) info ;;
-    install) install ;;
+    install) check_prereqs && install ;;
+    reinstall) check_prereqs && backup && mv prefix prefix-old && install && restore ;;
+    backup) backup ;;
+    restore) restore ;;
     run) run ;;
     *) usage; exit 1 ;;
 esac
